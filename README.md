@@ -108,3 +108,141 @@ Open http://localhost:8000/docs to test endpoints.
 ## Notes
 - By default the agent uses OpenAI (gpt-4o-mini) via CrewAI’s LLM wrapper. You can swap OPENAI_MODEL in .env.
 - The service is designed to be factual and document-grounded. If data is missing, it will say so rather than hallucinate.
+
+
+# Bugs Found and Fixing Approach
+
+This document systematically catalogs the bugs encountered in the repository and details the approach used to fix each one. It is intended as a supplement to the main README, providing technical transparency and serving as a debugging reference for future maintainers.
+
+---
+
+## 1. Incorrect Installation Command in README
+
+- **Bug:**  
+  The original README listed `pip install -r requirement.txt` instead of the correct `requirements.txt`.
+- **Fixing Approach:**  
+  Corrected every instance to `pip install -r requirements.txt` and clarified installation steps.
+
+---
+
+## 2. Missing and Mismatched Dependencies
+
+- **Bug:**  
+  The original `requirements.txt`:
+  - Omitted crucial dependencies like `python-dotenv`, `pypdf`, and `uvicorn`.
+  - Included heavy, rarely-used Google libraries with strict versions, causing potential conflicts.
+  - Sometimes included libraries not imported or required.
+- **Fixing Approach:**  
+  - Added missing dependencies with pinned, compatible versions.
+  - Added clarifying comments about which dependencies are core and which are optional.
+  - Ensured all runtime imports are covered by `requirements.txt`.
+  - Added notes for macOS/Apple Silicon compatibility (e.g., `onnxruntime-silicon`).
+
+---
+
+## 3. Python Version Incompatibility
+
+- **Bug:**  
+  CrewAI and related packages require Python >=3.10,<3.14, but installs sometimes failed due to Python 3.9 or 3.14+.
+- **Fixing Approach:**  
+  - Updated documentation to instruct usage of Python 3.11 or 3.12.
+  - Provided step-by-step setup for Homebrew, pyenv, and Conda environments.
+  - Added compatibility checks before install.
+
+---
+
+## 4. LLM Initialization and Agent Misconfiguration
+
+- **Bug:**  
+  - `llm = llm` undefined in `agents.py`.
+  - LLM not explicitly initialized with model and API key.
+  - Agents used unsafe, hallucination-prone prompts and incorrect `tools` parameter (`tool` instead of `tools` list).
+- **Fixing Approach:**  
+  - Properly imported and initialized CrewAI LLM with environment variables.
+  - Set agent prompts to be professional, factual, and document-grounded.
+  - Used `tools=[...]` correctly for CrewAI agents.
+
+---
+
+## 5. PDF Reader Tool Design Flaws
+
+- **Bug:**  
+  - Used an undefined class or imported `Pdf`.
+  - The reader was not compatible as a CrewAI tool.
+  - Lacked robust error handling and whitespace normalization.
+- **Fixing Approach:**  
+  - Rebuilt the PDF tool using `pypdf` for reliable extraction.
+  - Decorated tool with `@tool`.
+  - Implemented whitespace normalization and explicit error raising for missing files or unreadable content.
+
+---
+
+## 6. Hallucination-Prone and Unsafe Task Prompts
+
+- **Bug:**  
+  - Tasks encouraged making up data or providing fake links.
+  - No clear instruction to ground answers only in the provided document.
+- **Fixing Approach:**  
+  - Rewrote all prompts to be fact-based, conservative, and safe.
+  - Added explicit instructions to only use document data and note uncertainties.
+
+---
+
+## 7. Main Application (main.py) Logic Issues
+
+- **Bug:**  
+  - Name collisions between route functions and imported tasks.
+  - File handling logic did not align with tool expectations (wrong PDF path).
+  - No result persistence; results lost after restart.
+  - Minimal input validation.
+- **Fixing Approach:**  
+  - Aliased task imports to avoid naming conflicts.
+  - Ensured uploaded PDF is always saved to the path used by the tool.
+  - Added SQLite database for persistent result storage.
+  - Added robust input validation and error handling.
+  - Provided endpoints to fetch past analyses.
+
+---
+
+## 8. Bonus: Queue/Worker Scalability (Design Pattern, not implemented)
+
+- **Bug/Limit:**  
+  - The original code was synchronous; for scale, an async/queue-based approach is preferable.
+- **Fixing Approach:**  
+  - Documented how to implement with Redis + RQ/Celery.
+  - Suggested API pattern for background job submission and polling.
+
+---
+
+## 9. General Code Hygiene
+
+- **Bug:**  
+  - Inconsistent variable naming, missing docstrings, unused imports.
+  - No clear separation between core logic and optional expansion.
+- **Fixing Approach:**  
+  - Cleaned up variable naming for clarity.
+  - Added docstrings and comments.
+  - Moved expansion hooks to optional classes/sections.
+
+---
+
+## 10. Environment Variable Handling
+
+- **Bug:**  
+  - `.env` not always loaded before use, leading to missing API keys at runtime.
+- **Fixing Approach:**  
+  - Ensured `dotenv` is loaded at the top of each relevant file.
+  - Clarified `.env` setup in documentation.
+
+---
+
+## Conclusion
+
+By addressing these issues, the repository is now:
+- Stable and reliable to install and run
+- Safer and more professional in its LLM prompting
+- Robust in its PDF handling and result persistence
+- Easier to maintain and extend
+
+If further bugs are discovered, please update this document with a new section per bug.
+
